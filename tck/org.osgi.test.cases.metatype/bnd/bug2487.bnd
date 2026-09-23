@@ -1,5 +1,5 @@
 Bundle-Version: 4.2.0
-Bundle-SymbolicName: $(p).bug2487
+Bundle-SymbolicName: ${p}.bug2487
 
 -includeresource					= \
  resources/bug2487

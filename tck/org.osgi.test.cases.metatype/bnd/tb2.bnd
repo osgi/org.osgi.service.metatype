@@ -1,8 +1,8 @@
 Bundle-Version: 4.2.0
-Bundle-SymbolicName: $(p).tb2
-Bundle-Activator: $(p).tb2.Activator
+Bundle-SymbolicName: ${p}.tb2
+Bundle-Activator: ${p}.tb2.Activator
 
--privatepackage	: $(p).tb2
+-privatepackage	: ${p}.tb2
 
 
 
