@@ -12,7 +12,7 @@
 		<relativePath>../../pom.xml</relativePath>
 	</parent>
 	<artifactId>org.osgi.spec.service.metatype</artifactId>
-	<name>OSGi Specification repo for org.osgi.service.metatype</name>
+	<name>OSGi Metatype Service Specification</name>
 
 	<dependencies>
 		<dependency>
