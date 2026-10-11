@@ -26,6 +26,6 @@ import org.osgi.framework.Bundle;
  */
 public class AdMinMaxR6Test extends AdMinMaxTest {
 	protected Bundle getTestBundle() throws Exception {
-		return install("tb3-r6.jar");
+		return installer.installBundle("tb3-r6.jar", false);
 	}
 }

@@ -26,6 +26,6 @@ import org.osgi.framework.Bundle;
  */
 public class Bug1852R6Test extends Bug1852Test {
 	protected Bundle getTestBundle() throws Exception {
-		return install("tb4-r6.jar");
+		return installer.installBundle("tb4-r6.jar", false);
 	}
 }

@@ -18,9 +18,15 @@
 
 package org.osgi.test.cases.metatype.junit;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.List;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.osgi.framework.Bundle;
+import org.osgi.framework.BundleContext;
 import org.osgi.framework.Version;
 import org.osgi.framework.wiring.BundleCapability;
 import org.osgi.framework.wiring.BundleWiring;
@@ -29,10 +35,13 @@ import org.osgi.namespace.implementation.ImplementationNamespace;
 import org.osgi.namespace.service.ServiceNamespace;
 import org.osgi.resource.Namespace;
 import org.osgi.service.metatype.MetaTypeService;
-import org.osgi.test.support.OSGiTestCase;
+import org.osgi.test.common.annotation.InjectBundleContext;
 import org.osgi.util.tracker.ServiceTracker;
 
-public class CapabilitiesTestCase extends OSGiTestCase {
+public class CapabilitiesTestCase {
+
+	@InjectBundleContext
+	BundleContext		context;
 	private static final Version							VERSION	= new Version(
 			1, 4, 0);
 	private static final String									PACKAGE	= "org.osgi.service.metatype";
@@ -43,23 +52,24 @@ public class CapabilitiesTestCase extends OSGiTestCase {
 	public CapabilitiesTestCase() {
 	}
 
-	protected void setUp() throws Exception {
-		super.setUp();
-		mtsTracker = new ServiceTracker<MetaTypeService, MetaTypeService>(getContext(), MetaTypeService.class.getName(),
+	@BeforeEach
+	public void setUp() throws Exception {
+		mtsTracker = new ServiceTracker<MetaTypeService, MetaTypeService>(context, MetaTypeService.class.getName(),
 				null);
 		mtsTracker.open();
-		assertEquals("Wrong number of MetaTypeServices", 1, mtsTracker.size());
+		assertThat(mtsTracker.size()).as("Wrong number of MetaTypeServices").isOne();
 		Bundle impl = mtsTracker.getServiceReference().getBundle();
-		assertNotNull("MetaTypeService implementation bundle not found", impl);
+		assertThat(impl).as("MetaTypeService implementation bundle not found").isNotNull();
 		wiring = impl.adapt(BundleWiring.class);
-		assertNotNull("No BundleWiring available for SCR bundle", wiring);
+		assertThat(wiring).as("No BundleWiring available for SCR bundle").isNotNull();
 	}
 
-	protected void tearDown() throws Exception {
+	@AfterEach
+	public void tearDown() throws Exception {
 		mtsTracker.close();
-		super.tearDown();
 	}
 
+	@Test
 	public void testExtenderCapability() throws Exception {
 		final String namespace = ExtenderNamespace.EXTENDER_NAMESPACE;
 		boolean found = false;
@@ -67,18 +77,18 @@ public class CapabilitiesTestCase extends OSGiTestCase {
 		for (BundleCapability extender : extenders) {
 			if (NAME.equals(extender.getAttributes().get(namespace))) {
 				found = true;
-				assertEquals(namespace + " capability version wrong", VERSION,
-						extender.getAttributes().get(ExtenderNamespace.CAPABILITY_VERSION_ATTRIBUTE));
+				assertThat(extender.getAttributes().get(ExtenderNamespace.CAPABILITY_VERSION_ATTRIBUTE)).as(namespace + " capability version wrong").isEqualTo(VERSION);
 				String uses = extender.getDirectives().get(Namespace.CAPABILITY_USES_DIRECTIVE);
-				assertNotNull(namespace + " capability uses directive missing", uses);
+				assertThat(uses).as(namespace + " capability uses directive missing").isNotNull();
 				boolean usefound = uses.indexOf(PACKAGE) >= 0;
-				assertTrue(namespace + " capability missing " + PACKAGE + " in uses", usefound);
+				assertThat(usefound).as(namespace + " capability missing " + PACKAGE + " in uses").isTrue();
 				break;
 			}
 		}
-		assertTrue("missing " + namespace + " capability for " + NAME, found);
+		assertThat(found).as("missing " + namespace + " capability for " + NAME).isTrue();
 	}
 
+	@Test
 	public void testImplementationCapability() throws Exception {
 		final String namespace = ImplementationNamespace.IMPLEMENTATION_NAMESPACE;
 		boolean found = false;
@@ -86,18 +96,18 @@ public class CapabilitiesTestCase extends OSGiTestCase {
 		for (BundleCapability extender : extenders) {
 			if (NAME.equals(extender.getAttributes().get(namespace))) {
 				found = true;
-				assertEquals(namespace + " capability version wrong", VERSION,
-						extender.getAttributes().get(ImplementationNamespace.CAPABILITY_VERSION_ATTRIBUTE));
+				assertThat(extender.getAttributes().get(ImplementationNamespace.CAPABILITY_VERSION_ATTRIBUTE)).as(namespace + " capability version wrong").isEqualTo(VERSION);
 				String uses = extender.getDirectives().get(Namespace.CAPABILITY_USES_DIRECTIVE);
-				assertNotNull(namespace + " capability uses directive missing", uses);
+				assertThat(uses).as(namespace + " capability uses directive missing").isNotNull();
 				boolean usefound = uses.indexOf(PACKAGE) >= 0;
-				assertTrue(namespace + " capability missing " + PACKAGE + " in uses", usefound);
+				assertThat(usefound).as(namespace + " capability missing " + PACKAGE + " in uses").isTrue();
 				break;
 			}
 		}
-		assertTrue("missing " + namespace + " capability for " + NAME, found);
+		assertThat(found).as("missing " + namespace + " capability for " + NAME).isTrue();
 	}
 
+	@Test
 	public void testServiceCapability() throws Exception {
 		final String namespace = ServiceNamespace.SERVICE_NAMESPACE;
 		boolean found = false;
@@ -109,13 +119,13 @@ public class CapabilitiesTestCase extends OSGiTestCase {
 			if (objectClass.contains(MetaTypeService.class.getName())) {
 				found = true;
 				String uses = service.getDirectives().get(Namespace.CAPABILITY_USES_DIRECTIVE);
-				assertNotNull(namespace + " capability uses directive missing", uses);
+				assertThat(uses).as(namespace + " capability uses directive missing").isNotNull();
 				boolean usefound = uses.indexOf(PACKAGE) >= 0;
-				assertTrue(namespace + " capability missing " + PACKAGE + " in uses", usefound);
+				assertThat(usefound).as(namespace + " capability missing " + PACKAGE + " in uses").isTrue();
 				break;
 			}
 		}
-		assertTrue("missing " + namespace + " capability for " + MetaTypeService.class.getName(), found);
+		assertThat(found).as("missing " + namespace + " capability for " + MetaTypeService.class.getName()).isTrue();
 	}
 
 }

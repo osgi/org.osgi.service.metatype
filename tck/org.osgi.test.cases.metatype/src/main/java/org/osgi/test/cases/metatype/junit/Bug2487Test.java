@@ -17,6 +17,11 @@
  *******************************************************************************/
 package org.osgi.test.cases.metatype.junit;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.metatype.AttributeDefinition;
@@ -34,13 +39,14 @@ public class Bug2487Test extends MetaTypeTest {
 	private MetaTypeInformation mti;
 	private ServiceReference<MetaTypeService>	ref;
 	
+	@Test
 	public void testInvalidDefaultIgnored() {
 		ObjectClassDefinition ocd = mti.getObjectClassDefinition("car.1", null);
 		AttributeDefinition ad = findAttributeDefinitionById("11", ocd);
-		assertNull("Invalid default values must be ignored",
-				ad.getDefaultValue());
+		assertThat(ad.getDefaultValue()).as("Invalid default values must be ignored").isNull();
 	}
 
+	@Test
 	public void testOptionsExclusive() {
 		ObjectClassDefinition ocd = mti.getObjectClassDefinition("car.1", null);
 		AttributeDefinition ad = findAttributeDefinitionById("11", ocd);
@@ -49,20 +55,22 @@ public class Bug2487Test extends MetaTypeTest {
 		assertAttributeBad(ad, "purple");
 	}
 	
-	protected void setUp() throws Exception {
-		ref = getContext().getServiceReference(MetaTypeService.class);
+	@BeforeEach
+	public void setUp() throws Exception {
+		ref = context.getServiceReference(MetaTypeService.class);
 		bundle = getTestBundle();
 		bundle.start();
-		MetaTypeService mts = getContext().getService(ref);
+		MetaTypeService mts = context.getService(ref);
 		mti = mts.getMetaTypeInformation(bundle);
 	}
 
 	protected Bundle getTestBundle() throws Exception {
-		return install("bug2487.jar");
+		return installer.installBundle("bug2487.jar", false);
 	}
 
-	protected void tearDown() throws Exception {
-		getContext().ungetService(ref);
+	@AfterEach
+	public void tearDown() throws Exception {
+		context.ungetService(ref);
 		bundle.uninstall();
 	}
 }

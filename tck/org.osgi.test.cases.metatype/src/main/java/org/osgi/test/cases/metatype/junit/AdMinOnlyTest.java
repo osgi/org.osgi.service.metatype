@@ -20,6 +20,9 @@ package org.osgi.test.cases.metatype.junit;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.metatype.AttributeDefinition;
@@ -46,6 +49,7 @@ public class AdMinOnlyTest extends MetaTypeTest {
 	/**
 	 * AttributeDefinition.STRING
 	 */
+	@Test
 	public void testString() {
 		assertAttributeGood(ads.get("string"), "1234");
 		assertAttributeGood(ads.get("string"), "12345");
@@ -55,6 +59,7 @@ public class AdMinOnlyTest extends MetaTypeTest {
 	/**
 	 * AttributeDefinition.LONG
 	 */
+	@Test
 	public void testLong() {
 		assertAttributeGood(ads.get("long"), "1000");
 		assertAttributeGood(ads.get("long"), "1001");
@@ -64,6 +69,7 @@ public class AdMinOnlyTest extends MetaTypeTest {
 	/**
 	 * AttributeDefinition.DOUBLE
 	 */
+	@Test
 	public void testDouble() {
 		assertAttributeGood(ads.get("double"), "3.141592653589");
 		assertAttributeGood(ads.get("double"), "3.141592653590");
@@ -73,6 +79,7 @@ public class AdMinOnlyTest extends MetaTypeTest {
 	/**
 	 * AttributeDefinition.FLOAT
 	 */
+	@Test
 	public void testFloat() {
 		assertAttributeGood(ads.get("float"), "3.1415");
 		assertAttributeGood(ads.get("float"), "3.1416");
@@ -82,6 +89,7 @@ public class AdMinOnlyTest extends MetaTypeTest {
 	/**
 	 * AttributeDefinition.INTEGER
 	 */
+	@Test
 	public void testInteger() {
 		assertAttributeGood(ads.get("integer"), "100");
 		assertAttributeGood(ads.get("integer"), "101");
@@ -91,6 +99,7 @@ public class AdMinOnlyTest extends MetaTypeTest {
 	/**
 	 * AttributeDefinition.BYTE
 	 */
+	@Test
 	public void testByte() {
 		assertAttributeGood(ads.get("byte"), "1");
 		assertAttributeGood(ads.get("byte"), "2");
@@ -100,6 +109,7 @@ public class AdMinOnlyTest extends MetaTypeTest {
 	/**
 	 * AttributeDefinition.CHAR
 	 */
+	@Test
 	public void testChar() {
 		assertAttributeGood(ads.get("char"), "P");
 		assertAttributeGood(ads.get("char"), "Q");
@@ -109,6 +119,7 @@ public class AdMinOnlyTest extends MetaTypeTest {
 	/**
 	 * AttributeDefinition.SHORT
 	 */
+	@Test
 	public void testShort() {
 		assertAttributeGood(ads.get("short"), "10");
 		assertAttributeGood(ads.get("short"), "11");
@@ -118,17 +129,19 @@ public class AdMinOnlyTest extends MetaTypeTest {
 	/**
 	 * AttributeDefinition.PASSWORD
 	 */
+	@Test
 	public void testPassword() {
 		assertAttributeGood(ads.get("password"), "12345678");
 		assertAttributeGood(ads.get("password"), "123456789");
 		assertAttributeBad(ads.get("password"), "1234567");
 	}
 	
-	protected void setUp() throws Exception {
-		ref = getContext().getServiceReference(MetaTypeService.class);
+	@BeforeEach
+	public void setUp() throws Exception {
+		ref = context.getServiceReference(MetaTypeService.class);
 		bundle = getTestBundle();
 		bundle.start();
-		MetaTypeService mts = getContext().getService(ref);
+		MetaTypeService mts = context.getService(ref);
 		MetaTypeInformation mti = mts.getMetaTypeInformation(bundle);
 		ObjectClassDefinition ocd = mti.getObjectClassDefinition("minOnly", null);
 		AttributeDefinition[] lads = ocd.getAttributeDefinitions(ObjectClassDefinition.ALL);
@@ -138,11 +151,12 @@ public class AdMinOnlyTest extends MetaTypeTest {
 	}
 
 	protected Bundle getTestBundle() throws Exception {
-		return install("tb3.jar");
+		return installer.installBundle("tb3.jar", false);
 	}
 	
-	protected void tearDown() throws Exception {
-		getContext().ungetService(ref);
+	@AfterEach
+	public void tearDown() throws Exception {
+		context.ungetService(ref);
 		bundle.stop();
 		bundle.uninstall();
 	}

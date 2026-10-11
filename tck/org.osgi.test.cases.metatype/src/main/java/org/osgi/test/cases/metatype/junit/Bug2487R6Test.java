@@ -26,6 +26,6 @@ import org.osgi.framework.Bundle;
  */
 public class Bug2487R6Test extends Bug2487Test {
 	protected Bundle getTestBundle() throws Exception {
-		return install("bug2487-r6.jar");
+		return installer.installBundle("bug2487-r6.jar", false);
 	}
 }

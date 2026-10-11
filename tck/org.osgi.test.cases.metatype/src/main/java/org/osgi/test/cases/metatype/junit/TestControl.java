@@ -17,12 +17,19 @@
  *******************************************************************************/
 package org.osgi.test.cases.metatype.junit;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Dictionary;
 import java.util.Hashtable;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
@@ -36,7 +43,9 @@ import org.osgi.service.metatype.MetaTypeInformation;
 import org.osgi.service.metatype.MetaTypeProvider;
 import org.osgi.service.metatype.MetaTypeService;
 import org.osgi.service.metatype.ObjectClassDefinition;
-import org.osgi.test.support.compatibility.DefaultTestBundleControl;
+import org.osgi.test.common.annotation.InjectBundleContext;
+import org.osgi.test.common.annotation.InjectBundleInstaller;
+import org.osgi.test.common.install.BundleInstaller;
 
 /**
  * Get a Meta Type Service and do diverse tests.
@@ -44,7 +53,20 @@ import org.osgi.test.support.compatibility.DefaultTestBundleControl;
  * @author left
  * @author $Id$
  */
-public class TestControl extends DefaultTestBundleControl {
+public class TestControl {
+
+	@InjectBundleContext
+	BundleContext		context;
+
+	@InjectBundleInstaller
+	BundleInstaller		installer;
+
+	String				testMethodName;
+
+	@BeforeEach
+	void testMethodName(TestInfo testInfo) {
+		testMethodName = testInfo.getTestMethod().get().getName();
+	}
 
 	private Bundle			bundle;
 	private ServiceReference<MetaTypeService>	ref;
@@ -53,56 +75,54 @@ public class TestControl extends DefaultTestBundleControl {
 	/**
 	 * Install the test bundle
 	 */
-	protected void setUp() throws Exception {
-		ref = getContext().getServiceReference(MetaTypeService.class);
-		assertNotNull(
-				"Service MetaTypeService is required to run this test. Install the service and try again.",
-				ref);
-		mts = getContext().getService(ref);
+	@BeforeEach
+	public void setUp() throws Exception {
+		ref = context.getServiceReference(MetaTypeService.class);
+		assertThat(ref).as("Service MetaTypeService is required to run this test. Install the service and try again.").isNotNull();
+		mts = context.getService(ref);
 		
 		bundle = getTestBundle();
 	}
 
 	protected Bundle getTestBundle() throws Exception {
-		return install("tb1.jar");
+		return installer.installBundle("tb1.jar", false);
 	}
 
 	/**
 	 * Uninstall the test bundle
 	 */
-	protected void tearDown() throws Exception {
-		getContext().ungetService(ref);
+	@AfterEach
+	public void tearDown() throws Exception {
+		context.ungetService(ref);
 		bundle.uninstall();
 	}
 
 	/**
 	 * Test MetaTypeService implementation
 	 */
+	@Test
 	public void testMetaTypeService() {
 		MetaTypeInformation mti;
 
 		mti = mts.getMetaTypeInformation(bundle);
-		assertNotNull(
-				"MetaTypeService.getMetaTypeInformation() return an object (as expected)",
-				mti);
+		assertThat(mti).as("MetaTypeService.getMetaTypeInformation() return an object (as expected)").isNotNull();
 	}
 
 	/**
 	 * Test MetaTypeInformation implementation
 	 */
+	@Test
 	public void testMetaTypeInformation() {
 		MetaTypeInformation mti;
 
 		mti = mts.getMetaTypeInformation(bundle);
 
 		// Test the method getBundle()
-		assertSame("MetaTypeInformation.getBundle()", bundle, mti.getBundle());
+		assertThat(mti.getBundle()).as("MetaTypeInformation.getBundle()").isSameAs(bundle);
 
 		// Test the method getPids()
-		assertEquals("MetaTypeInformation.getPids()", 3, mti.getPids().length);
-		assertNotNull(
-				"MetaTypeInformation.getPids()[0] is not null (as expected)",
-				mti.getPids()[0]);
+		assertThat(mti.getPids().length).as("MetaTypeInformation.getPids()").isEqualTo(3);
+		assertThat(mti.getPids()[0]).as("MetaTypeInformation.getPids()[0] is not null (as expected)").isNotNull();
 	}
 
 	/**
@@ -111,6 +131,7 @@ public class TestControl extends DefaultTestBundleControl {
 	 * @spec MetaTypeProvider.getObjectClassDefinition(String,String)
 	 * @spec MetaTypeProvider.getLocales()
 	 */
+	@Test
 	public void testMetaTypeProvider() {
 		MetaTypeInformation mti;
 		ObjectClassDefinition ocd;
@@ -122,9 +143,7 @@ public class TestControl extends DefaultTestBundleControl {
 		// Test the method getObjectClassDefinition() with invalid id
 		try {
 			ocd = mti.getObjectClassDefinition("", "du");
-			assertNull(
-					"MetaTypeProvider.getObjectClassDefinition() returns null (as expected)",
-					ocd);
+			assertThat(ocd).as("MetaTypeProvider.getObjectClassDefinition() returns null (as expected)").isNull();
 		}
 		catch (IllegalArgumentException ex) {
 			// Ignore this exception
@@ -141,17 +160,15 @@ public class TestControl extends DefaultTestBundleControl {
 
 		// Test the method getObjectClassDefinition() with valid id and locale
 		ocd = mti.getObjectClassDefinition("com.acme.foo", "du");
-		assertNotNull(
-				"MetaTypeProvider.getObjectClassDefinition() cannot return null (as expected)",
-				ocd);
+		assertThat(ocd).as("MetaTypeProvider.getObjectClassDefinition() cannot return null (as expected)").isNotNull();
 
 		// Test the method getLocales()
 		locales = mti.getLocales();
-		assertEquals("MetaTypeProvider.getLocales()", 3, locales.length);
+		assertThat(locales.length).as("MetaTypeProvider.getLocales()").isEqualTo(3);
 
 		expectedLocales = new String[] {"du", "du_NL", "en_US"};
-		assertTrue("MetaTypeProvider.getLocales()", isArrayEquals(
-				expectedLocales, locales));
+		assertThat(isArrayEquals(
+				expectedLocales, locales)).as("MetaTypeProvider.getLocales()").isTrue();
 	}
 
 	/**
@@ -162,6 +179,7 @@ public class TestControl extends DefaultTestBundleControl {
 	 * @spec ObjectClassDefinition.getAttributeDefinitions(int)
 	 * @spec ObjectClassDefinition.getIcon(int)
 	 */
+	@Test
 	public void testObjectClassDefinition() throws Exception {
 		MetaTypeInformation mti;
 		ObjectClassDefinition ocd;
@@ -170,52 +188,49 @@ public class TestControl extends DefaultTestBundleControl {
 
 		// Test the methods with default locale
 		ocd = mti.getObjectClassDefinition("com.acme.foo", null);
-		assertNotNull(ocd);
-		assertEquals("ObjectClassDefinition.getID()", "ocd1", ocd.getID());
-		assertEquals("ObjectClassDefinition.getName()", "Person(default)", ocd
-				.getName());
-		assertEquals("ObjectClassDefinition.getDescription()",
-				"Description(default)", ocd.getDescription());
-		assertEquals("ObjectClassDefinition.getAttributeDefinitions()", 2, ocd
-				.getAttributeDefinitions(ObjectClassDefinition.OPTIONAL).length);
-		assertEquals("ObjectClassDefinition.getAttributeDefinitions()", 2, ocd
-				.getAttributeDefinitions(ObjectClassDefinition.REQUIRED).length);
-		assertEquals("ObjectClassDefinition.getAttributeDefinitions()", 4, ocd
-				.getAttributeDefinitions(ObjectClassDefinition.ALL).length);
-		assertNotNull("ObjectClassDefinition.getIcon()", ocd.getIcon(32));
-		assertNotNull("ObjectClassDefinition.getIcon()", ocd.getIcon(16));
+		assertThat(ocd).isNotNull();
+		assertThat(ocd.getID()).as("ObjectClassDefinition.getID()").isEqualTo("ocd1");
+		assertThat(ocd
+				.getName()).as("ObjectClassDefinition.getName()").isEqualTo("Person(default)");
+		assertThat(ocd.getDescription()).as("ObjectClassDefinition.getDescription()").isEqualTo("Description(default)");
+		assertThat(ocd
+				.getAttributeDefinitions(ObjectClassDefinition.OPTIONAL).length).as("ObjectClassDefinition.getAttributeDefinitions()").isEqualTo(2);
+		assertThat(ocd
+				.getAttributeDefinitions(ObjectClassDefinition.REQUIRED).length).as("ObjectClassDefinition.getAttributeDefinitions()").isEqualTo(2);
+		assertThat(ocd
+				.getAttributeDefinitions(ObjectClassDefinition.ALL).length).as("ObjectClassDefinition.getAttributeDefinitions()").isEqualTo(4);
+		assertThat(ocd.getIcon(32)).as("ObjectClassDefinition.getIcon()").isNotNull();
+		assertThat(ocd.getIcon(16)).as("ObjectClassDefinition.getIcon()").isNotNull();
 
 		// Test the methods with Dutch locale
 		ocd = mti.getObjectClassDefinition("com.acme.foo", "du");
-		assertEquals("ObjectClassDefinition.getID()", "ocd1", ocd.getID());
-		assertEquals("ObjectClassDefinition.getName()", "Persoon(du)", ocd
-				.getName());
-		assertEquals("ObjectClassDefinition.getDescription()",
-				"De beschrijving", ocd.getDescription());
-		assertEquals("ObjectClassDefinition.getAttributeDefinitions()", 2, ocd
-				.getAttributeDefinitions(ObjectClassDefinition.OPTIONAL).length);
-		assertEquals("ObjectClassDefinition.getAttributeDefinitions()", 2, ocd
-				.getAttributeDefinitions(ObjectClassDefinition.REQUIRED).length);
-		assertEquals("ObjectClassDefinition.getAttributeDefinitions()", 4, ocd
-				.getAttributeDefinitions(ObjectClassDefinition.ALL).length);
-		assertNotNull("ObjectClassDefinition.getIcon()", ocd.getIcon(32));
-		assertNotNull("ObjectClassDefinition.getIcon()", ocd.getIcon(16));
+		assertThat(ocd.getID()).as("ObjectClassDefinition.getID()").isEqualTo("ocd1");
+		assertThat(ocd
+				.getName()).as("ObjectClassDefinition.getName()").isEqualTo("Persoon(du)");
+		assertThat(ocd.getDescription()).as("ObjectClassDefinition.getDescription()").isEqualTo("De beschrijving");
+		assertThat(ocd
+				.getAttributeDefinitions(ObjectClassDefinition.OPTIONAL).length).as("ObjectClassDefinition.getAttributeDefinitions()").isEqualTo(2);
+		assertThat(ocd
+				.getAttributeDefinitions(ObjectClassDefinition.REQUIRED).length).as("ObjectClassDefinition.getAttributeDefinitions()").isEqualTo(2);
+		assertThat(ocd
+				.getAttributeDefinitions(ObjectClassDefinition.ALL).length).as("ObjectClassDefinition.getAttributeDefinitions()").isEqualTo(4);
+		assertThat(ocd.getIcon(32)).as("ObjectClassDefinition.getIcon()").isNotNull();
+		assertThat(ocd.getIcon(16)).as("ObjectClassDefinition.getIcon()").isNotNull();
 
 		// Test the methods with Dutch (du_NL) locale
 		ocd = mti.getObjectClassDefinition("com.acme.foo", "du_NL");
-		assertEquals("ObjectClassDefinition.getID()", "ocd1", ocd.getID());
-		assertEquals("ObjectClassDefinition.getName()", "Persoon(du_NL)", ocd
-				.getName());
-		assertEquals("ObjectClassDefinition.getDescription()",
-				"De beschrijving", ocd.getDescription());
-		assertEquals("ObjectClassDefinition.getAttributeDefinitions()", 2, ocd
-				.getAttributeDefinitions(ObjectClassDefinition.OPTIONAL).length);
-		assertEquals("ObjectClassDefinition.getAttributeDefinitions()", 2, ocd
-				.getAttributeDefinitions(ObjectClassDefinition.REQUIRED).length);
-		assertEquals("ObjectClassDefinition.getAttributeDefinitions()", 4, ocd
-				.getAttributeDefinitions(ObjectClassDefinition.ALL).length);
-		assertNotNull("ObjectClassDefinition.getIcon()", ocd.getIcon(32));
-		assertNotNull("ObjectClassDefinition.getIcon()", ocd.getIcon(16));
+		assertThat(ocd.getID()).as("ObjectClassDefinition.getID()").isEqualTo("ocd1");
+		assertThat(ocd
+				.getName()).as("ObjectClassDefinition.getName()").isEqualTo("Persoon(du_NL)");
+		assertThat(ocd.getDescription()).as("ObjectClassDefinition.getDescription()").isEqualTo("De beschrijving");
+		assertThat(ocd
+				.getAttributeDefinitions(ObjectClassDefinition.OPTIONAL).length).as("ObjectClassDefinition.getAttributeDefinitions()").isEqualTo(2);
+		assertThat(ocd
+				.getAttributeDefinitions(ObjectClassDefinition.REQUIRED).length).as("ObjectClassDefinition.getAttributeDefinitions()").isEqualTo(2);
+		assertThat(ocd
+				.getAttributeDefinitions(ObjectClassDefinition.ALL).length).as("ObjectClassDefinition.getAttributeDefinitions()").isEqualTo(4);
+		assertThat(ocd.getIcon(32)).as("ObjectClassDefinition.getIcon()").isNotNull();
+		assertThat(ocd.getIcon(16)).as("ObjectClassDefinition.getIcon()").isNotNull();
 	}
 
 	/**
@@ -228,6 +243,7 @@ public class TestControl extends DefaultTestBundleControl {
 	 * @spec AttributeDefinition.getOptionLabels()
 	 * @spec AttributeDefinition.getType()
 	 */
+	@Test
 	public void testAttributeDefinition() {
 		boolean found;
 		int count;
@@ -238,81 +254,63 @@ public class TestControl extends DefaultTestBundleControl {
 		String[] expectedOptions;
 
 		mti = mts.getMetaTypeInformation(bundle);
-		assertNotNull(mti);
+		assertThat(mti).isNotNull();
 
 		// Get an object for tests
 		ocd = mti.getObjectClassDefinition("com.acme.foo", "du");
-		assertNotNull(ocd);
+		assertThat(ocd).isNotNull();
 		attributes = ocd.getAttributeDefinitions(ObjectClassDefinition.ALL);
-		assertNotNull(attributes);
+		assertThat(attributes).isNotNull();
 
 		// Find the attribute 'sex' and run some tests
 		found = false;
 		for (int i = 0; i < attributes.length; i++) {
 			if (attributes[i].getID().equals("sex")) {
-				// Test the method getName()
-				assertNotNull(
-						"AttributeDefinition.getName() is not null (as expected)",
-						attributes[i].getName());
-				assertEquals("AttributeDefinition.getName()", "Geslacht",
-						attributes[i].getName());
+				// Test the method testMethodName
+				assertThat(attributes[i].getName()).as("AttributeDefinition.getName() is not null (as expected)").isNotNull();
+				assertThat(attributes[i].getName()).as("AttributeDefinition.getName()").isEqualTo("Geslacht");
 
 				// Test the method getDescription()
-				assertNotNull(
-						"AttributeDefinition.getDescription()  is not null (as expected)",
-						attributes[i].getDescription());
-				assertEquals("AttributeDefinition.getDescription()",
-						"Beschrijving", attributes[i].getDescription());
+				assertThat(attributes[i].getDescription()).as("AttributeDefinition.getDescription()  is not null (as expected)").isNotNull();
+				assertThat(attributes[i].getDescription()).as("AttributeDefinition.getDescription()").isEqualTo("Beschrijving");
 
 				// Test the method getCardinality()
-				assertEquals("AttributeDefinition.getCardinality()", 0,
-						attributes[i].getCardinality());
+				assertThat(attributes[i].getCardinality()).as("AttributeDefinition.getCardinality()").isZero();
 
 				// Test the method getType()
-				assertEquals("AttributeDefinition.getType()",
-						AttributeDefinition.STRING, attributes[i].getType());
+				assertThat(attributes[i].getType()).as("AttributeDefinition.getType()").isEqualTo(AttributeDefinition.STRING);
 
 				// Test the method getOptionValues()
 				options = attributes[i].getOptionValues();
-				assertEquals("AttributeDefinition.getOptionValues()", 4,
-						options.length);
+				assertThat(options.length).as("AttributeDefinition.getOptionValues()").isEqualTo(4);
 
 				expectedOptions = new String[] {"male", "female", "yes", "no"};
-				assertTrue(
-						"AttributeDefinition.getOptionValues() does not return the expected values",
-						isArrayEquals(expectedOptions, options));
+				assertThat(isArrayEquals(expectedOptions, options)).as("AttributeDefinition.getOptionValues() does not return the expected values").isTrue();
 
 				// Test the method getOptionLabels()
 				options = attributes[i].getOptionLabels();
-				assertEquals("AttributeDefinition.getOptionLabels()", 4,
-						options.length);
+				assertThat(options.length).as("AttributeDefinition.getOptionLabels()").isEqualTo(4);
 
 				expectedOptions = new String[] {"Mannelijk", "Vrouwelijk",
 						"Ja", "Nee"};
-				assertTrue(
-						"AttributeDefinition.getOptionLabels() does not return the expected values",
-						isArrayEquals(expectedOptions, options));
+				assertThat(isArrayEquals(expectedOptions, options)).as("AttributeDefinition.getOptionLabels() does not return the expected values").isTrue();
 
 				// Test the method validate
 				options = new String[] {"male", "female", "yes", "no"};
 				for (int j = 0; j < options.length; j++) {
-					assertEquals("AttributeDefinition.validate()", "",
-							attributes[i].validate(options[j]));
+					assertThat(attributes[i].validate(options[j])).as("AttributeDefinition.validate()").isEmpty();
 				}
-				assertTrue(
-						"AttributeDefinition.validate() cannot return true with a incorrect value",
-						!(attributes[i].validate("incorrect").equals("")));
+				assertThat(!(attributes[i].validate("incorrect").equals(""))).as("AttributeDefinition.validate() cannot return true with a incorrect value").isTrue();
 
 				// Test the method getDefaultValue()
-				assertTrue("AttributeDefinition.getDefaultValue()",
-						isArrayEquals(new String[] { "female" },
+				assertThat(isArrayEquals(new String[] { "female" },
 								attributes[i]
-								.getDefaultValue()));
+								.getDefaultValue())).as("AttributeDefinition.getDefaultValue()").isTrue();
 
 				found = true;
 			}
 		}
-		assertTrue("Attribute with id 'sex' found (as expected)", found);
+		assertThat(found).as("Attribute with id 'sex' found (as expected)").isTrue();
 
 		// Get other object for tests
 		ocd = mti.getObjectClassDefinition("com.acme.bar", "du");
@@ -320,93 +318,67 @@ public class TestControl extends DefaultTestBundleControl {
 		
 		// Make sure the implementation provides all of the attribute definitions 
 		// specified within the metadata XML (testfile.xml - ocd2).
-		assertEquals("Missing one or more attribute definitions", 10, attributes.length);
+		assertThat(attributes.length).as("Missing one or more attribute definitions").isEqualTo(10);
 
 		// Execute attribute type tests
 		count = 0;
 		for (int i = 0; i < attributes.length; i++) {
 			if (attributes[i].getID().equals("boolean")) {
 				count++;
-				assertEquals(
-						"A boolean attribute must be of type AttributeDefinition.BOOLEAN",
-						AttributeDefinition.BOOLEAN, attributes[i].getType());
+				assertThat(attributes[i].getType()).as("A boolean attribute must be of type AttributeDefinition.BOOLEAN").isEqualTo(AttributeDefinition.BOOLEAN);
 			}
 			else
 				if (attributes[i].getID().equals("byte")) {
 					count++;
-					assertEquals(
-							"A byte attribute must be of type AttributeDefinition.BYTE",
-							AttributeDefinition.BYTE, attributes[i].getType());
+					assertThat(attributes[i].getType()).as("A byte attribute must be of type AttributeDefinition.BYTE").isEqualTo(AttributeDefinition.BYTE);
 				}
 				else
 					if (attributes[i].getID().equals("character")) {
 						count++;
-						assertEquals(
-								"A character attribute must be of type AttributeDefinition.CHARACTER",
-								AttributeDefinition.CHARACTER, attributes[i]
-										.getType());
+						assertThat(attributes[i]
+										.getType()).as("A character attribute must be of type AttributeDefinition.CHARACTER").isEqualTo(AttributeDefinition.CHARACTER);
 					}
 					else
 						if (attributes[i].getID().equals("double")) {
 							count++;
-							assertEquals(
-									"A double attribute must be of type AttributeDefinition.DOUBLE",
-									AttributeDefinition.DOUBLE, attributes[i]
-											.getType());
+							assertThat(attributes[i]
+											.getType()).as("A double attribute must be of type AttributeDefinition.DOUBLE").isEqualTo(AttributeDefinition.DOUBLE);
 						}
 						else
 							if (attributes[i].getID().equals("float")) {
 								count++;
-								assertEquals(
-										"A float attribute must be of type AttributeDefinition.FLOAT",
-										AttributeDefinition.FLOAT,
-										attributes[i].getType());
+								assertThat(attributes[i].getType()).as("A float attribute must be of type AttributeDefinition.FLOAT").isEqualTo(AttributeDefinition.FLOAT);
 							}
 							else
 								if (attributes[i].getID().equals("integer")) {
 									count++;
-									assertEquals(
-											"A integer attribute must be of type AttributeDefinition.INTEGER",
-											AttributeDefinition.INTEGER,
-											attributes[i].getType());
+									assertThat(attributes[i].getType()).as("A integer attribute must be of type AttributeDefinition.INTEGER").isEqualTo(AttributeDefinition.INTEGER);
 								}
 								else
 									if (attributes[i].getID().equals("long")) {
 										count++;
-										assertEquals(
-												"A long attribute must be of type AttributeDefinition.LONG",
-												AttributeDefinition.LONG,
-												attributes[i].getType());
+										assertThat(attributes[i].getType()).as("A long attribute must be of type AttributeDefinition.LONG").isEqualTo(AttributeDefinition.LONG);
 									}
 									else
 										if (attributes[i].getID().equals(
 												"short")) {
 											count++;
-											assertEquals(
-													"A short attribute must be of type AttributeDefinition.SHORT",
-													AttributeDefinition.SHORT,
-													attributes[i].getType());
+											assertThat(attributes[i].getType()).as("A short attribute must be of type AttributeDefinition.SHORT").isEqualTo(AttributeDefinition.SHORT);
 										}
 										else
 											if (attributes[i].getID().equals(
 													"string")) {
 												count++;
-												assertEquals(
-														"A string attribute must be of type AttributeDefinition.STRING",
-														AttributeDefinition.STRING,
-														attributes[i].getType());
+												assertThat(attributes[i].getType()).as("A string attribute must be of type AttributeDefinition.STRING").isEqualTo(AttributeDefinition.STRING);
 											}
 											else
 												if (attributes[i].getID().equals("password")) {
 													count++;
-													assertEquals(
-															"A password attribute must be of type AttributeDefinition.PASSWORD",
-															AttributeDefinition.PASSWORD,
-															attributes[i].getType());
+													assertThat(attributes[i].getType()).as("A password attribute must be of type AttributeDefinition.PASSWORD").isEqualTo(AttributeDefinition.PASSWORD);
 												}
 		}
 
-		assertEquals("All types must be tested", attributes.length, count);
+		assertThat(count).as("All types must be tested").isEqualTo(attributes.length);
 	}
 
 	/**
@@ -415,22 +387,23 @@ public class TestControl extends DefaultTestBundleControl {
 	 * @spec MetaTypeInformation.getPids()
 	 * @spec MetaTypeInformation.getObjectClassDefinition(String,String)
 	 */
+	@Test
 	public void testBundleMetaTypeProvider() throws Exception {
 		Bundle tb2;
 		MetaTypeInformation mti;
 		ServiceReference<MetaTypeProvider> sr;
 
-		tb2 = installBundle("tb2.jar");
+		tb2 = installer.installBundle("tb2.jar");
 		tb2.start();
 
 		// Check if the service is registered
-		sr = getContext().getServiceReference(
+		sr = context.getServiceReference(
 				MetaTypeProvider.class);
-		assertNotNull("Checking if the service is registered", sr);
+		assertThat(sr).as("Checking if the service is registered").isNotNull();
 
 		// Get an object for tests
 		mti = mts.getMetaTypeInformation(tb2);
-		assertEquals("Checking the number of PIDs", 1, mti.getPids().length);
+		assertThat(mti.getPids().length).as("Checking the number of PIDs").isOne();
 
 		tb2.stop();
 		tb2.uninstall();
@@ -445,8 +418,9 @@ public class TestControl extends DefaultTestBundleControl {
 	 * @spec MetaTypeInformation.getPids()
 	 * @spec MetaTypeInformation.getFactoryPids()
 	 */
+	@Test
 	public void testBundleMetaTypeProvider1() throws Exception {
-		BundleContext bundleContext = getContext();
+		BundleContext bundleContext = context;
 		Dictionary<String,Object> properties = new Hashtable<>();
 		String servicePid = "testBundleMetaTypeProvider1";
 		properties.put(
@@ -470,11 +444,9 @@ public class TestControl extends DefaultTestBundleControl {
 				}, 
 				properties);
 		MetaTypeInformation mti = mts.getMetaTypeInformation(bundleContext.getBundle());
-		assertNotNull("The returned MetaTypeInformation was null", mti);
-		assertTrue("The pids returned by MetaTypeInformation did not match the METATYPE_PID property",
-				isArrayEquals(new String[]{metatypePid}, mti.getPids()));
-		assertTrue("The factory pid array returned by MetaTypeInformation was not null or an empty array",
-				mti.getFactoryPids() == null || mti.getFactoryPids().length == 0);
+		assertThat(mti).as("The returned MetaTypeInformation was null").isNotNull();
+		assertThat(isArrayEquals(new String[]{metatypePid}, mti.getPids())).as("The pids returned by MetaTypeInformation did not match the METATYPE_PID property").isTrue();
+		assertThat(mti.getFactoryPids() == null || mti.getFactoryPids().length == 0).as("The factory pid array returned by MetaTypeInformation was not null or an empty array").isTrue();
 		serviceRegistration.unregister();
 	}
 	
@@ -488,8 +460,9 @@ public class TestControl extends DefaultTestBundleControl {
 	 * @spec MetaTypeInformation.getPids()
 	 * @spec MetaTypeInformation.getFactoryPids()
 	 */
+	@Test
 	public void testBundleMetaTypeProvider2() throws Exception {
-		BundleContext bundleContext = getContext();
+		BundleContext bundleContext = context;
 		Dictionary<String,Object> properties = new Hashtable<>();
 		String servicePid = "testBundleMetaTypeProvider2";
 		properties.put(
@@ -516,11 +489,9 @@ public class TestControl extends DefaultTestBundleControl {
 				}, 
 				properties);
 		MetaTypeInformation mti = mts.getMetaTypeInformation(bundleContext.getBundle());
-		assertNotNull("The returned MetaTypeInformation was null", mti);
-		assertTrue("The factory pids returned by MetaTypeInformation did not match the METATYPE_FACTORY_PID property",
-				isArrayEquals(metatypeFactoryPids.toArray(new String[metatypeFactoryPids.size()]), mti.getFactoryPids()));
-		assertTrue("The pid array returned by MetaTypeInformation was not null or an empty array",
-				mti.getPids() == null || mti.getPids().length == 0);
+		assertThat(mti).as("The returned MetaTypeInformation was null").isNotNull();
+		assertThat(isArrayEquals(metatypeFactoryPids.toArray(new String[metatypeFactoryPids.size()]), mti.getFactoryPids())).as("The factory pids returned by MetaTypeInformation did not match the METATYPE_FACTORY_PID property").isTrue();
+		assertThat(mti.getPids() == null || mti.getPids().length == 0).as("The pid array returned by MetaTypeInformation was not null or an empty array").isTrue();
 		serviceRegistration.unregister();
 	}
 	
@@ -534,8 +505,9 @@ public class TestControl extends DefaultTestBundleControl {
 	 * @spec MetaTypeInformation.getPids()
 	 * @spec MetaTypeInformation.getFactoryPids()
 	 */
+	@Test
 	public void testBundleMetaTypeProvider3() throws Exception {
-		BundleContext bundleContext = getContext();
+		BundleContext bundleContext = context;
 		Dictionary<String,Object> properties = new Hashtable<>();
 		String servicePid = "testBundleMetaTypeProvider3";
 		properties.put(
@@ -568,11 +540,9 @@ public class TestControl extends DefaultTestBundleControl {
 				}, 
 				properties);
 		MetaTypeInformation mti = mts.getMetaTypeInformation(bundleContext.getBundle());
-		assertNotNull("The returned MetaTypeInformation was null", mti);
-		assertTrue("The pids returned by MetaTypeInformation did not match the METATYPE_PID property",
-				isArrayEquals(metatypePids, mti.getPids()));
-		assertTrue("The factory pids returned by MetaTypeInformation did not match the METATYPE_FACTORY_PID property",
-				isArrayEquals(metatypeFactoryPids.toArray(new String[metatypeFactoryPids.size()]), mti.getFactoryPids()));
+		assertThat(mti).as("The returned MetaTypeInformation was null").isNotNull();
+		assertThat(isArrayEquals(metatypePids, mti.getPids())).as("The pids returned by MetaTypeInformation did not match the METATYPE_PID property").isTrue();
+		assertThat(isArrayEquals(metatypeFactoryPids.toArray(new String[metatypeFactoryPids.size()]), mti.getFactoryPids())).as("The factory pids returned by MetaTypeInformation did not match the METATYPE_FACTORY_PID property").isTrue();
 		serviceRegistration.unregister();
 	}
 	
@@ -586,8 +556,9 @@ public class TestControl extends DefaultTestBundleControl {
 	 * @spec MetaTypeInformation.getPids()
 	 * @spec MetaTypeInformation.getFactoryPids()
 	 */
+	@Test
 	public void testBundleMetaTypeProvider4() throws Exception {
-		BundleContext bundleContext = getContext();
+		BundleContext bundleContext = context;
 		Dictionary<String,Object> properties = new Hashtable<>();
 		String servicePid = "testBundleMetaTypeProvider4";
 		Collection<String> metatypePids = new ArrayList<>();
@@ -616,13 +587,11 @@ public class TestControl extends DefaultTestBundleControl {
 				service, 
 				properties);
 		MetaTypeInformation mti = mts.getMetaTypeInformation(bundleContext.getBundle());
-		assertNotNull("The returned MetaTypeInformation was null", mti);
+		assertThat(mti).as("The returned MetaTypeInformation was null").isNotNull();
 		Collection<String> pids = new ArrayList<>(metatypePids);
 		pids.add(servicePid);
-		assertTrue("The pids returned by MetaTypeInformation did not match the SERVICE_PID and METATYPE_PID properties",
-				isArrayEquals(pids.toArray(new String[pids.size()]), mti.getPids()));
-		assertTrue("The factory pids returned by MetaTypeInformation did not match the METATYPE_FACTORY_PID property",
-				isArrayEquals(metatypeFactoryPids, mti.getFactoryPids()));
+		assertThat(isArrayEquals(pids.toArray(new String[pids.size()]), mti.getPids())).as("The pids returned by MetaTypeInformation did not match the SERVICE_PID and METATYPE_PID properties").isTrue();
+		assertThat(isArrayEquals(metatypeFactoryPids, mti.getFactoryPids())).as("The factory pids returned by MetaTypeInformation did not match the METATYPE_FACTORY_PID property").isTrue();
 		serviceRegistration.unregister();
 	}
 	
@@ -636,8 +605,9 @@ public class TestControl extends DefaultTestBundleControl {
 	 * @spec MetaTypeInformation.getPids()
 	 * @spec MetaTypeInformation.getFactoryPids()
 	 */
+	@Test
 	public void testBundleMetaTypeProvider5() throws Exception {
-		BundleContext bundleContext = getContext();
+		BundleContext bundleContext = context;
 		Dictionary<String,Object> properties = new Hashtable<>();
 		Collection<String> servicePids = new ArrayList<>();
 		servicePids.add("testBundleMetaTypeProvider5.1");
@@ -665,13 +635,11 @@ public class TestControl extends DefaultTestBundleControl {
 				service, 
 				properties);
 		MetaTypeInformation mti = mts.getMetaTypeInformation(bundleContext.getBundle());
-		assertNotNull("The returned MetaTypeInformation was null", mti);
-		assertTrue("The pids returned by MetaTypeInformation did not match the METATYPE_PID property",
-				isArrayEquals(metatypePids.toArray(new String[metatypePids.size()]), mti.getPids()));
+		assertThat(mti).as("The returned MetaTypeInformation was null").isNotNull();
+		assertThat(isArrayEquals(metatypePids.toArray(new String[metatypePids.size()]), mti.getPids())).as("The pids returned by MetaTypeInformation did not match the METATYPE_PID property").isTrue();
 		Collection<String> factoryPids = new ArrayList<>(servicePids);
 		factoryPids.add(metatypeFactoryPid);
-		assertTrue("The factory pids returned by MetaTypeInformation did not match the METATYPE_FACTORY_PID property",
-				isArrayEquals(factoryPids.toArray(new String[factoryPids.size()]), mti.getFactoryPids()));
+		assertThat(isArrayEquals(factoryPids.toArray(new String[factoryPids.size()]), mti.getFactoryPids())).as("The factory pids returned by MetaTypeInformation did not match the METATYPE_FACTORY_PID property").isTrue();
 		serviceRegistration.unregister();
 	}
 	
@@ -684,8 +652,9 @@ public class TestControl extends DefaultTestBundleControl {
 	 * @spec MetaTypeInformation.getPids()
 	 * @spec MetaTypeInformation.getFactoryPids()
 	 */
+	@Test
 	public void testBundleMetaTypeProvider6() throws Exception {
-		BundleContext bundleContext = getContext();
+		BundleContext bundleContext = context;
 		Dictionary<String,Object> properties = new Hashtable<>();
 		String servicePid = "testBundleMetaTypeProvider6";
 		properties.put(
@@ -745,15 +714,13 @@ public class TestControl extends DefaultTestBundleControl {
 				}, 
 				properties);
 		MetaTypeInformation mti = mts.getMetaTypeInformation(bundleContext.getBundle());
-		assertNotNull("The returned MetaTypeInformation was null", mti);
+		assertThat(mti).as("The returned MetaTypeInformation was null").isNotNull();
 		Collection<String> pids = new ArrayList<>(metatype1pids);
 		pids.addAll(metatype2pids);
-		assertTrue("The pids returned by MetaTypeInformation did not match the METATYPE_PID properties from both MetaTypeProviders",
-				isArrayEquals(pids.toArray(new String[pids.size()]), mti.getPids()));
+		assertThat(isArrayEquals(pids.toArray(new String[pids.size()]), mti.getPids())).as("The pids returned by MetaTypeInformation did not match the METATYPE_PID properties from both MetaTypeProviders").isTrue();
 		Collection<String> factoryPids = new ArrayList<>(metatype1factoryPids);
 		factoryPids.addAll(metatype2factoryPids);
-		assertTrue("The factory pids returned by MetaTypeInformation did not match the METATYPE_FACTORY_PID properties from both MetaTypeProviders",
-				isArrayEquals(factoryPids.toArray(new String[factoryPids.size()]), mti.getFactoryPids()));
+		assertThat(isArrayEquals(factoryPids.toArray(new String[factoryPids.size()]), mti.getFactoryPids())).as("The factory pids returned by MetaTypeInformation did not match the METATYPE_FACTORY_PID properties from both MetaTypeProviders").isTrue();
 		serviceRegistration2.unregister();
 		serviceRegistration1.unregister();
 	}

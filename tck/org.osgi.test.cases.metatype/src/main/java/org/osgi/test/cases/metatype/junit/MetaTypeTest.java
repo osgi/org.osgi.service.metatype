@@ -17,17 +17,28 @@
  *******************************************************************************/
 package org.osgi.test.cases.metatype.junit;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.osgi.framework.BundleContext;
 import org.osgi.service.metatype.AttributeDefinition;
 import org.osgi.service.metatype.ObjectClassDefinition;
-import org.osgi.test.support.OSGiTestCase;
+import org.osgi.test.common.annotation.InjectBundleContext;
+import org.osgi.test.common.annotation.InjectBundleInstaller;
+import org.osgi.test.common.install.BundleInstaller;
 
-public abstract class MetaTypeTest extends OSGiTestCase {
+public abstract class MetaTypeTest {
+	@InjectBundleContext
+	protected BundleContext		context;
+
+	@InjectBundleInstaller
+	protected BundleInstaller	installer;
+
 	protected void assertAttributeBad(AttributeDefinition ad, String value) {
-		assertTrue("Value '" + value + "' should not have been valid", ad.validate(value).length() > 0);
+		assertThat(ad.validate(value).length() > 0).as("Value '" + value + "' should not have been valid").isTrue();
 	}
 	
 	protected void assertAttributeGood(AttributeDefinition ad, String value) {
-		assertEquals("Value '" + value + "' should have been valid", 0, ad.validate(value).length());
+		assertThat(ad.validate(value)).as("Value '" + value + "' should have been valid").hasSize(0);
 	}
 
 	protected AttributeDefinition findAttributeDefinitionById(String id,
