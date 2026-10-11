@@ -17,8 +17,13 @@
  *******************************************************************************/
 package org.osgi.test.cases.metatype.junit;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.util.Arrays;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.metatype.MetaTypeInformation;
@@ -45,29 +50,32 @@ public class Bug1852Test extends MetaTypeTest {
 	private MetaTypeInformation mti;
 	private ServiceReference<MetaTypeService>	ref;
 	
+	@Test
 	public void test() {
 		String[] factoryPids = mti.getFactoryPids();
-		assertEquals("Incorrect factory pids", FACTORY_PIDS.length, factoryPids.length);
-		assertTrue("Incorrect factory pids", Arrays.asList(factoryPids).containsAll(Arrays.asList(FACTORY_PIDS)));
+		assertThat(factoryPids.length).as("Incorrect factory pids").isEqualTo(FACTORY_PIDS.length);
+		assertThat(Arrays.asList(factoryPids).containsAll(Arrays.asList(FACTORY_PIDS))).as("Incorrect factory pids").isTrue();
 		String[] pids = mti.getPids();
-		assertEquals("Incorrect pids", PIDS.length, pids.length);
-		assertTrue("Incorrect pids", Arrays.asList(pids).containsAll(Arrays.asList(PIDS)));
+		assertThat(pids.length).as("Incorrect pids").isEqualTo(PIDS.length);
+		assertThat(Arrays.asList(pids).containsAll(Arrays.asList(PIDS))).as("Incorrect pids").isTrue();
 	}
 	
-	protected void setUp() throws Exception {
-		ref = getContext().getServiceReference(MetaTypeService.class);
+	@BeforeEach
+	public void setUp() throws Exception {
+		ref = context.getServiceReference(MetaTypeService.class);
 		bundle = getTestBundle();
 		bundle.start();
-		MetaTypeService mts = getContext().getService(ref);
+		MetaTypeService mts = context.getService(ref);
 		mti = mts.getMetaTypeInformation(bundle);
 	}
 	
 	protected Bundle getTestBundle() throws Exception {
-		return install("tb4.jar");
+		return installer.installBundle("tb4.jar", false);
 	}
 
-	protected void tearDown() throws Exception {
-		getContext().ungetService(ref);
+	@AfterEach
+	public void tearDown() throws Exception {
+		context.ungetService(ref);
 		bundle.stop();
 		bundle.uninstall();
 	}

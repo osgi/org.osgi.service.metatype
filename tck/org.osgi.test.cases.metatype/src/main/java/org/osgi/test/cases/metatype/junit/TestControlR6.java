@@ -26,6 +26,6 @@ import org.osgi.framework.Bundle;
  */
 public class TestControlR6 extends TestControl {
 	protected Bundle getTestBundle() throws Exception {
-		return install("tb1-r6.jar");
+		return installer.installBundle("tb1-r6.jar", false);
 	}
 }
